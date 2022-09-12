@@ -1,0 +1,1 @@
+execmacro currentmacrodirectory + "\\keyx.mac", currentmacrobasename;

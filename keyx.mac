@@ -1,0 +1,181 @@
+#time_start = tickcount;
+$fn_ini = currentmacrodirectory + "\\keyx.ini";
+debuginfo 2; // 0: 停止, 1: 出力モニタ, 2: アウトプット枠
+
+//. キー調査
+$mod = "";
+if ( iskeydown( 0x10 ) ) $mod = $mod + "shift+";
+if ( iskeydown( 0x12 ) ) $mod = $mod + "alt+";
+if ( iskeydown( 0x11 ) ) $mod = $mod + "ctrl+";
+$key = "?";
+
+call keycode;
+#num = 1;
+while ( #num < 230 ) {
+	if ( iskeydown( #num ) && (! #ng[ #num ]) ) break;
+	#num = #num + 1;
+}
+$key = $c2k[ #num ];
+if ( $key == "" )
+	$key = str( #num );
+call time_log "key";
+
+//. 呼び出したプログラム
+$win_type = "editor";
+if ( (platform & 0x00800000) != 0 ) {
+	loaddll "TKInfo.dll";
+	if( dllfunc( "IsHidemaruMailMain" ) || dllfunc( "IsHidemaruMailGrep" ) )
+		$win_type = "mail_main";
+	else
+		$win_type = "mail_editor";
+}
+//call dbginfo $win_type;
+call time_log "win";
+
+//. 実行
+$arg = getarg(0);
+if ( $arg != "" ) {
+	$key = leftstr( $arg, strlen( $arg ) - 4 );
+} else {
+	$key = $mod + $key;
+}
+
+$cmd = getinistr( $fn_ini, $win_type, $key );
+
+if ( $cmd == "" ) {
+	$cmd = getinistr( $fn_ini, "all", $key );
+	if ( $cmd == "" ) {
+		call dbginfo $key + ": コマンド未登録";
+//		message "キー: " + $key + "\nコマンド未登録です", $title_mac;
+		endmacro;
+	}
+}
+call dbginfo $key + ": " + $cmd;
+call time_log "command";
+execmacro macrodir + "\\" + getinistr( $fn_ini, "config", "cmdp_path" ), $cmd;
+
+// マクロ実行専門なら
+// execmacro macrodir + "\\" + $cmd;
+// マクロ文専門なら
+// eval $cmd;
+endmacro;
+
+//. dbginfo
+dbginfo:
+	debuginfo "[keyx] " + $$1 + "\x0A";
+return;
+
+//. dbginfo
+time_log:
+	debuginfo "[keyx] " + str( tickcount - #time_start ) + " msec, " + $$1 + "\x0A";
+return;
+
+//. keycode
+keycode:
+	$c2k[0x01] = "mouse_l";
+	$c2k[0x02] = "mouse_r";
+	$c2k[0x04] = "mouse_m";
+	$c2k[0x09] = "tab";
+	$c2k[0x0c] = "clear";
+	$c2k[0x0d] = "enter";
+	$c2k[0x13] = "pause";
+	$c2k[0x1b] = "esc";
+	$c2k[0x20] = "space";
+	$c2k[0x21] = "pageup";
+	$c2k[0x22] = "pagedown";
+	$c2k[0x23] = "end";
+	$c2k[0x24] = "home";
+	$c2k[0x25] = "left";
+	$c2k[0x26] = "up";
+	$c2k[0x27] = "right";
+	$c2k[0x28] = "down";
+	$c2k[0x2d] = "insert";
+	$c2k[0x2e] = "delete";
+	$c2k[0x30] = "0";
+	$c2k[0x31] = "1";
+	$c2k[0x32] = "2";
+	$c2k[0x33] = "3";
+	$c2k[0x34] = "4";
+	$c2k[0x35] = "5";
+	$c2k[0x36] = "6";
+	$c2k[0x37] = "7";
+	$c2k[0x38] = "8";
+	$c2k[0x39] = "9";
+	$c2k[0x41] = "a";
+	$c2k[0x42] = "b";
+	$c2k[0x43] = "c";
+	$c2k[0x44] = "d";
+	$c2k[0x45] = "e";
+	$c2k[0x46] = "f";
+	$c2k[0x47] = "g";
+	$c2k[0x48] = "h";
+	$c2k[0x49] = "i";
+	$c2k[0x4a] = "j";
+	$c2k[0x4b] = "k";
+	$c2k[0x4c] = "l";
+	$c2k[0x4d] = "m";
+	$c2k[0x4e] = "n";
+	$c2k[0x4f] = "o";
+	$c2k[0x50] = "p";
+	$c2k[0x51] = "q";
+	$c2k[0x52] = "r";
+	$c2k[0x53] = "s";
+	$c2k[0x54] = "t";
+	$c2k[0x55] = "u";
+	$c2k[0x56] = "v";
+	$c2k[0x57] = "w";
+	$c2k[0x58] = "x";
+	$c2k[0x59] = "y";
+	$c2k[0x5a] = "z";
+	$c2k[0xba] = "colon"; //:*
+	$c2k[0xbb] = "semicolon"; //;+
+	$c2k[0xbc] = "comma"; //,<
+	$c2k[0xbd] = "hyphen"; //-=
+	$c2k[0xbe] = "period"; //.>
+	$c2k[0xbf] = "slash"; // /?
+	$c2k[0xc0] = "atmark"; //@`
+	$c2k[0xdb] = "lbrcket"; // [{
+	$c2k[0xdc] = "yen"; //\|
+	$c2k[0xdd] = "rbracket"; //]}
+	$c2k[0xde] = "caret"; //^~
+	$c2k[0xe2] = "_";
+	
+	//- テンキー
+	$c2k[0x60] = "t_0";
+	$c2k[0x61] = "t_1";
+	$c2k[0x62] = "t_2";
+	$c2k[0x63] = "t_3";
+	$c2k[0x64] = "t_4";
+	$c2k[0x65] = "t_5";
+	$c2k[0x66] = "t_6";
+	$c2k[0x67] = "t_7";
+	$c2k[0x68] = "t_8";
+	$c2k[0x69] = "t_9";
+	$c2k[0x6a] = "t_asterisk";
+	$c2k[0x6b] = "t_plus";
+	
+	$c2k[0x70] = "f1";
+	$c2k[0x71] = "f2";
+	$c2k[0x72] = "f3";
+	$c2k[0x73] = "f4";
+	$c2k[0x74] = "f5";
+	$c2k[0x75] = "f6";
+	$c2k[0x76] = "f7";
+	$c2k[0x77] = "f8";
+	$c2k[0x78] = "f9";
+	$c2k[0x79] = "f10";
+	$c2k[0x7a] = "f11";
+	$c2k[0x7b] = "f12";
+
+	// shirt, ctrl, alt
+	#ng[0x10] = 1;
+	#ng[0x11] = 1;
+	#ng[0x12] = 1;
+	#ng[0xa0] = 1;
+	#ng[0xa1] = 1;
+	#ng[0xa2] = 1;
+	#ng[0xa3] = 1;
+	#ng[0xa4] = 1;
+	#ng[0xa5] = 1;
+return;
+
