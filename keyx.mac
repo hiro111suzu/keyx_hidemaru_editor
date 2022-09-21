@@ -1,23 +1,39 @@
 #time_start = tickcount;
 $fn_ini = currentmacrodirectory + "\\keyx.ini";
-debuginfo 2; // 0: 停止, 1: 出力モニタ, 2: アウトプット枠
+debuginfo getininum( $fn_ini, "config", "debuginfo" );
+//$info_msg = "";
+$statusbar_txt = "[keyx]";
 
 //. キー調査
 $mod = "";
-if ( iskeydown( 0x10 ) ) $mod = $mod + "shift+";
-if ( iskeydown( 0x12 ) ) $mod = $mod + "alt+";
-if ( iskeydown( 0x11 ) ) $mod = $mod + "ctrl+";
+if ( iskeydown( 0x10 ) ) $mod = $mod + "Shift+";
+if ( iskeydown( 0x12 ) ) $mod = $mod + "Alt+";
+if ( iskeydown( 0x11 ) ) $mod = $mod + "Ctrl+";
 $key = "?";
 
-call keycode;
+//- shirt, ctrl, alt
+#ng[0x10] = 1;
+#ng[0x11] = 1;
+#ng[0x12] = 1;
+//	#ng[0x13] = 1; //- なぜだか押されたことになるPCがある
+#ng[0xa0] = 1;
+#ng[0xa1] = 1;
+#ng[0xa2] = 1;
+#ng[0xa3] = 1;
+#ng[0xa4] = 1;
+#ng[0xa5] = 1;
+
+#ng[19] = 1; //- なぜだか押されたことになるときがある
+
 #num = 1;
 while ( #num < 230 ) {
 	if ( iskeydown( #num ) && (! #ng[ #num ]) ) break;
 	#num = #num + 1;
 }
-$key = $c2k[ #num ];
-if ( $key == "" )
-	$key = str( #num );
+$key = str( #num );
+call split getinistr( $fn_ini, "code2key", $key ), "\t";
+if ( $split_l != "" )
+	$key = $split_l;
 call time_log "key";
 
 //. 呼び出したプログラム
@@ -51,131 +67,77 @@ if ( $cmd == "" ) {
 	}
 }
 call dbginfo $key + ": " + $cmd;
-call time_log "command";
-execmacro macrodir + "\\" + getinistr( $fn_ini, "config", "cmdp_path" ), $cmd;
 
-// マクロ実行専門なら
-// execmacro macrodir + "\\" + $cmd;
-// マクロ文専門なら
-// eval $cmd;
+//.. コマンド解釈
+call split $cmd, " ";
+$alias = getinistr( $fn_ini, "alias_head", leftstr( $cmd, 1 ) );
+if ( $alias != "" ) {
+	$split_l = $alias;
+	$split_r = midstr( $cmd, 1 );
+} else if ( rightstr( $split_l, 4 ) == ".mac" ) {
+	if ( existfile( $split_l ) ) {
+		$split_l = "mac";
+		$split_r = $cmd;
+	} else if ( existfile( macrodir + "\\" + $split_l ) ) {
+		$split_l = "mac";
+		$split_r = macrodir + "\\" + $cmd;
+	}
+} else if ( leftstr( $cmd, 8 ) == "https://" || existfile( $cmd ) ) {
+	$split_l = "run";
+	$split_r = $cmd;
+}
+call dbginfo $split_l + " " + $split_r;
+call time_log "command";
+
+//.. コマンド実行
+//title "keyx" + $info_msg, 1;
+
+if ( $split_l == "cmd" ) {
+	call dbginfo "マクロコマンド実行";
+	eval( $split_r );
+} else if ( $split_l == "mac" ) {
+	call dbginfo "マクロ実行";
+	// マクロファイル名と引数文字列を分割
+	call split $split_r, ".mac ";
+	if ( $split_r == "" )
+		execmacro $split_l;
+	else
+		execmacro $split_l + ".mac", $split_r;
+} else if ( $split_l == "run" ) {
+	call dbginfo "openbyshell 実行";
+	openbyshell $split_r;
+} else {
+	call dbginfo "cmdpに渡す";
+	execmacro macrodir + "\\" + getinistr( $fn_ini, "config", "cmdp_path" ), $cmd;
+}
 endmacro;
 
-//. dbginfo
+//. サブルーチン
+//.. dbginfo
 dbginfo:
+	$statusbar_txt = $statusbar_txt + " " + $$1;
+	title $statusbar_txt, 1;
+	title -1, 1;
+
+//	$info_msg = $info_msg + "/" + $$1;
 	debuginfo "[keyx] " + $$1 + "\x0A";
 return;
 
-//. dbginfo
+//.. time_log
 time_log:
-	debuginfo "[keyx] " + str( tickcount - #time_start ) + " msec, " + $$1 + "\x0A";
+//	debuginfo "[keyx] " + str( tickcount - #time_start ) + " msec, " + $$1 + "\x0A";
 return;
 
-//. keycode
-keycode:
-	$c2k[0x01] = "mouse_l";
-	$c2k[0x02] = "mouse_r";
-	$c2k[0x04] = "mouse_m";
-	$c2k[0x09] = "tab";
-	$c2k[0x0c] = "clear";
-	$c2k[0x0d] = "enter";
-	$c2k[0x13] = "pause";
-	$c2k[0x1b] = "esc";
-	$c2k[0x20] = "space";
-	$c2k[0x21] = "pageup";
-	$c2k[0x22] = "pagedown";
-	$c2k[0x23] = "end";
-	$c2k[0x24] = "home";
-	$c2k[0x25] = "left";
-	$c2k[0x26] = "up";
-	$c2k[0x27] = "right";
-	$c2k[0x28] = "down";
-	$c2k[0x2d] = "insert";
-	$c2k[0x2e] = "delete";
-	$c2k[0x30] = "0";
-	$c2k[0x31] = "1";
-	$c2k[0x32] = "2";
-	$c2k[0x33] = "3";
-	$c2k[0x34] = "4";
-	$c2k[0x35] = "5";
-	$c2k[0x36] = "6";
-	$c2k[0x37] = "7";
-	$c2k[0x38] = "8";
-	$c2k[0x39] = "9";
-	$c2k[0x41] = "a";
-	$c2k[0x42] = "b";
-	$c2k[0x43] = "c";
-	$c2k[0x44] = "d";
-	$c2k[0x45] = "e";
-	$c2k[0x46] = "f";
-	$c2k[0x47] = "g";
-	$c2k[0x48] = "h";
-	$c2k[0x49] = "i";
-	$c2k[0x4a] = "j";
-	$c2k[0x4b] = "k";
-	$c2k[0x4c] = "l";
-	$c2k[0x4d] = "m";
-	$c2k[0x4e] = "n";
-	$c2k[0x4f] = "o";
-	$c2k[0x50] = "p";
-	$c2k[0x51] = "q";
-	$c2k[0x52] = "r";
-	$c2k[0x53] = "s";
-	$c2k[0x54] = "t";
-	$c2k[0x55] = "u";
-	$c2k[0x56] = "v";
-	$c2k[0x57] = "w";
-	$c2k[0x58] = "x";
-	$c2k[0x59] = "y";
-	$c2k[0x5a] = "z";
-	$c2k[0xba] = "colon"; //:*
-	$c2k[0xbb] = "semicolon"; //;+
-	$c2k[0xbc] = "comma"; //,<
-	$c2k[0xbd] = "hyphen"; //-=
-	$c2k[0xbe] = "period"; //.>
-	$c2k[0xbf] = "slash"; // /?
-	$c2k[0xc0] = "atmark"; //@`
-	$c2k[0xdb] = "lbrcket"; // [{
-	$c2k[0xdc] = "yen"; //\|
-	$c2k[0xdd] = "rbracket"; //]}
-	$c2k[0xde] = "caret"; //^~
-	$c2k[0xe2] = "_";
-	
-	//- テンキー
-	$c2k[0x60] = "t_0";
-	$c2k[0x61] = "t_1";
-	$c2k[0x62] = "t_2";
-	$c2k[0x63] = "t_3";
-	$c2k[0x64] = "t_4";
-	$c2k[0x65] = "t_5";
-	$c2k[0x66] = "t_6";
-	$c2k[0x67] = "t_7";
-	$c2k[0x68] = "t_8";
-	$c2k[0x69] = "t_9";
-	$c2k[0x6a] = "t_asterisk";
-	$c2k[0x6b] = "t_plus";
-	
-	$c2k[0x70] = "f1";
-	$c2k[0x71] = "f2";
-	$c2k[0x72] = "f3";
-	$c2k[0x73] = "f4";
-	$c2k[0x74] = "f5";
-	$c2k[0x75] = "f6";
-	$c2k[0x76] = "f7";
-	$c2k[0x77] = "f8";
-	$c2k[0x78] = "f9";
-	$c2k[0x79] = "f10";
-	$c2k[0x7a] = "f11";
-	$c2k[0x7b] = "f12";
-
-	// shirt, ctrl, alt
-	#ng[0x10] = 1;
-	#ng[0x11] = 1;
-	#ng[0x12] = 1;
-	#ng[0xa0] = 1;
-	#ng[0xa1] = 1;
-	#ng[0xa2] = 1;
-	#ng[0xa3] = 1;
-	#ng[0xa4] = 1;
-	#ng[0xa5] = 1;
+//.. split: 文字列分割
+//- $$1 heystac, $$2 needle
+split:
+	##num = strstr( $$1, $$2 );
+	if ( ##num == -1 ) {
+		$split_l = $$1;
+		$split_r = "";
+		return;
+	}
+	$split_l = leftstr( $$1, ##num );
+	$split_r = midstr( $$1, ##num + strlen( $$2 ) );
 return;
 
